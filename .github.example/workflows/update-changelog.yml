@@ -1,0 +1,47 @@
+name: 'Update Changelog'
+
+on:
+  release:
+    types: [released]
+
+jobs:
+  create-branch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          ref: main
+
+      - name: Update Changelog
+        uses: stefanzweifel/changelog-updater-action@v1
+        with:
+          latest-version: ${{ github.event.release.name }}
+          release-notes: ${{ github.event.release.body }}
+
+      - name: Commit updated CHANGELOG
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: Update CHANGELOG to ${{ github.event.release.name }}
+          branch: update_changelog/${{ github.event.release.name }}
+          file_pattern: CHANGELOG.md
+          create_branch: true
+
+  create-pull-request:
+    runs-on: ubuntu-latest
+    needs: create-branch
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          ref: update_changelog/${{ github.event.release.name }}
+
+      - name: Create Pull Request
+        uses: repo-sync/pull-request@v2
+        with:
+          source_branch: 'update_changelog/${{ github.event.release.name }}'
+          destination_branch: 'main'
+          pr_title: 'Updated changelog to include ${{ github.event.release.name }}'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
